@@ -4,10 +4,20 @@ let leads = [];
 let selectedLeads = [];
 
 async function init() {
-    // Server already handles authentication page serving
+    console.log('Initializing app...');
+    // First check if we're authenticated
     try {
+        const authResponse = await fetch('/api/check-auth');
+        const authData = await authResponse.json();
+        
+        if (!authData.authenticated) {
+            window.location.href = '/';
+            return;
+        }
+        
         await loadLeads();
         await loadPhoneNumbers();
+        console.log('App initialized successfully!');
     } catch (error) {
         console.error('Initialization error:', error);
     }
@@ -19,11 +29,32 @@ async function logout() {
 }
 
 function showTab(tabName) {
-    document.querySelectorAll('.content-section').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.remove('tab-active'));
+    console.log('showTab called with:', tabName);
+    const contentSections = document.querySelectorAll('.content-section');
+    console.log('Found content sections:', contentSections.length);
+    const tabButtons = document.querySelectorAll('[id^="tab-"]');
+    console.log('Found tab buttons:', tabButtons.length);
+
+    contentSections.forEach(el => {
+        el.classList.add('hidden');
+        console.log('Hid section:', el.id);
+    });
+    tabButtons.forEach(el => {
+        el.classList.remove('tab-active');
+        console.log('Removed active from tab:', el.id);
+    });
     
-    document.getElementById(`content-${tabName}`).classList.remove('hidden');
-    document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+    const targetContent = document.getElementById(`content-${tabName}`);
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    
+    if (targetContent) {
+        targetContent.classList.remove('hidden');
+        console.log('Showed content:', targetContent.id);
+    }
+    if (targetTab) {
+        targetTab.classList.add('tab-active');
+        console.log('Activated tab:', targetTab.id);
+    }
 }
 
 async function handleFileSelect(event) {
