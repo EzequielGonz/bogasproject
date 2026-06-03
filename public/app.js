@@ -4,14 +4,13 @@ let leads = [];
 let selectedLeads = [];
 
 async function init() {
-    const authResponse = await fetch('/api/check-auth');
-    const authData = await authResponse.json();
-    if (!authData.authenticated) {
-        window.location.href = '/';
-        return;
+    // Server already handles authentication page serving
+    try {
+        await loadLeads();
+        await loadPhoneNumbers();
+    } catch (error) {
+        console.error('Initialization error:', error);
     }
-    await loadLeads();
-    await loadPhoneNumbers();
 }
 
 async function logout() {
@@ -108,6 +107,10 @@ async function startCampaign() {
 async function loadLeads() {
     try {
         const response = await fetch('/api/leads');
+        if (response.status === 401) {
+            window.location.href = '/';
+            return;
+        }
         leads = await response.json();
         updateLeadsStats();
     } catch (error) {
@@ -184,6 +187,10 @@ async function updateLeadStatus(id, status) {
 async function loadPhoneNumbers() {
     try {
         const response = await fetch('/api/phone-numbers');
+        if (response.status === 401) {
+            window.location.href = '/';
+            return;
+        }
         phoneNumbers = await response.json();
         renderPhoneNumbers();
     } catch (error) {
