@@ -5,9 +5,8 @@ const XLSX = require('xlsx');
 const Papa = require('papaparse');
 const dotenv = require('dotenv');
 const path = require('path');
-const fs = require('fs');
 const storage = require('./storage');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 
 dotenv.config();
 
@@ -17,11 +16,10 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-app.use(session({
-  secret: 'abogado-secret-key-123',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 day
+app.use(cookieSession({
+  name: 'session',
+  keys: ['abogado-secret-key-123'],
+  maxAge: 24 * 60 * 60 * 1000 // 1 day
 }));
 
 const VALID_USER = 'ABOGADO123';
@@ -68,20 +66,7 @@ app.get('/', (req, res) => {
   }
 });
 
-const uploadStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ storage: uploadStorage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.post('/api/upload', checkAuth, upload.single('file'), (req, res) => {
   try {
@@ -89,23 +74,20 @@ app.post('/api/upload', checkAuth, upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const filePath = req.file.path;
     let data = [];
 
     if (req.file.mimetype === 'text/csv' || req.file.originalname.endsWith('.csv')) {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const fileContent = req.file.buffer.toString('utf8');
       const result = Papa.parse(fileContent, { header: true });
       data = result.data;
     } else if (req.file.originalname.match(/\.(xlsx|xls)$/)) {
-      const workbook = XLSX.readFile(filePath);
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       data = XLSX.utils.sheet_to_json(worksheet);
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
     }
-
-    fs.unlinkSync(filePath);
 
     const leads = data.map(item => ({
       id: Date.now() + Math.random(),
@@ -221,21 +203,6 @@ app.post('/api/send-messages', checkAuth, (req, res) => {
 
   processQueue();
   res.json({ success: true, queued: leads.length });
-});
-
-const cron = require('node-cron');
-
-cron.schedule('0 0 * * *', () => {
-  const numbers = storage.getPhoneNumbers();
-  numbers.forEach(num => {
-    num.messagesToday = 0;
-    const daysSinceAdded = Math.floor((new Date() - new Date(num.dateAdded)) / (1000 * 60 * 60 * 24));
-    if (daysSinceAdded > 0) {
-      num.dailyLimit = Math.min(40 + (daysSinceAdded * 10), 200);
-    }
-  });
-  storage.savePhoneNumbers(numbers);
-  console.log('Daily reset completed');
 });
 
 app.listen(PORT, () => {
