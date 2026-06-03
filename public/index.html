@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Abogados - Bot WhatsApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            transition: all 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .tab-active {
+            border-bottom: 3px solid #3B82F6;
+            color: #3B82F6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-blue-600">CRM Abogados</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="showTab('upload')" class="px-4 py-2 rounded tab-active" id="tab-upload">Cargar Archivo</button>
+                    <button onclick="showTab('leads')" class="px-4 py-2 rounded" id="tab-leads">Leads</button>
+                    <button onclick="showTab('numbers')" class="px-4 py-2 rounded" id="tab-numbers">Números</button>
+                    <button onclick="showTab('campaigns')" class="px-4 py-2 rounded" id="tab-campaigns">Campañas</button>
+                    <button onclick="logout()" class="px-4 py-2 rounded bg-red-100 text-red-700 hover:bg-red-200">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div id="content-upload" class="content-section">
+            <div class="bg-white rounded-lg shadow-md p-8">
+                <h2 class="text-2xl font-semibold mb-6">Cargar Archivo de Datos</h2>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(event)">
+                    <label for="fileInput" class="cursor-pointer">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <p class="mt-2 text-gray-600">Arrastra y suelta un archivo aquí, o haz clic para seleccionar</p>
+                        <p class="text-sm text-gray-500 mt-1">Formatos soportados: Excel (.xlsx, .xls), CSV</p>
+                    </label>
+                </div>
+                <div id="preview" class="mt-6 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Datos Cargados:</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr id="tableHeaders"></tr>
+                            </thead>
+                            <tbody id="tableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-leads" class="content-section hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-600">Total Leads</h3>
+                    <p class="text-3xl font-bold text-blue-600" id="totalLeads">0</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-600">En Conversación</h3>
+                    <p class="text-3xl font-bold text-green-600" id="activeLeads">0</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-600">Caídos</h3>
+                    <p class="text-3xl font-bold text-red-600" id="droppedLeads">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">Lista de Leads</h3>
+                <div id="leadsList"></div>
+            </div>
+        </div>
+
+        <div id="content-numbers" class="content-section hidden">
+            <div class="bg-white rounded-lg shadow-md p-8">
+                <h2 class="text-2xl font-semibold mb-6">Gestión de Números de Teléfono</h2>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Agregar Número</label>
+                    <div class="flex space-x-4">
+                        <input type="text" id="newNumber" placeholder="+54911xxxxxxxxx" class="flex-1 border border-gray-300 rounded-lg px-4 py-2">
+                        <button onclick="addPhoneNumber()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">Agregar</button>
+                    </div>
+                </div>
+                <div id="numbersList"></div>
+            </div>
+        </div>
+
+        <div id="content-campaigns" class="content-section hidden">
+            <div class="bg-white rounded-lg shadow-md p-8">
+                <h2 class="text-2xl font-semibold mb-6">Configuración de Campaña</h2>
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Plantilla de Mensaje</label>
+                        <textarea id="messageTemplate" rows="4" class="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Hola {{nombre}}! Vi que tuviste una lesión en {{lugar}}..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Intervalo mínimo (segundos)</label>
+                            <input type="number" id="minDelay" value="0" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Intervalo máximo (segundos)</label>
+                            <input type="number" id="maxDelay" value="20" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        </div>
+                    </div>
+                    <button onclick="startCampaign()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Iniciar Campaña</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
